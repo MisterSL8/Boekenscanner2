@@ -1,52 +1,48 @@
-// app.js - Verbeterde universele versie voor PC en Android
 let momenteelGescandBoek = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    // We starten de camera handmatig op via de stabiele route
-    Html5Qrcode.getCameras().then(cameras => {
-        if (cameras && cameras.length > 0) {
-            // Als er camera's zijn, starten we de scanner
-            const html5QrCode = new Html5Qrcode("reader");
-            
-            // Kies bij voorkeur de achtercamera (Android), anders de eerste beschikbare (PC)
-            const cameraId = cameras.length > 1 ? cameras[1].id : cameras[0].id;
+    // 1. Initialiseer de Instascan scanner gekoppeld aan de HTML video-tag
+    let scanner = new Instascan.Scanner({ video: document.getElementById('preview'), scanPeriod: 5 });
+    
+    // Luister naar succesvolle scans
+    scanner.addListener('scan', function (content) {
+        onScanSuccess(content);
+    });
 
-            html5QrCode.start(
-                cameraId, 
-                { fps: 15, qrbox: { width: 250, height: 150 } },
-                (decodedText) => { onScanSuccess(decodedText); }, // Succes handler
-                (errorMessage) => { /* Stille fouten negeren tijdens het zoeken */ }
-            ).catch(err => {
-                document.getElementById('connection-status').innerText = "Camera startfout";
-                console.error("Camera startfout:", err);
-            });
+    // 2. Vraag actief de camera's op bij het besturingssysteem (dit triggert de pop-up direct!)
+    Instascan.Camera.getCameras().then(function (cameras) {
+        if (cameras.length > 0) {
+            // Als er een achtercamera is (meestal camera 1 of de laatste op Android), kies die. Anders camera 0 (PC).
+            let gekozenCamera = cameras.length > 1 ? cameras[1] : cameras[0];
+            scanner.start(gekozenCamera);
+            document.getElementById('connection-status').innerText = "Camera Actief";
         } else {
-            document.getElementById('connection-status').innerText = "Geen camera gevonden";
+            document.getElementById('connection-status').innerText = "Geen camera gedetecteerd";
+            alert("Er is geen camera op dit apparaat gevonden.");
         }
-    }).catch(err => {
-        // Hier vraagt de browser expliciet om toestemming zodra dit faalt
-        document.getElementById('connection-status').innerText = "Toegang geweigerd of geblokkeerd";
-        console.error("Camera permissie fout:", err);
+    }).catch(function (e) {
+        document.getElementById('connection-status').innerText = "Toestemming Geweigerd";
+        console.error(e);
+        alert("Cameratoestemming is geweigerd of geblokkeerd in je browser.");
     });
 
     laadVoorraadUitDatabase();
 });
 
-// Functie die afgaat zodra je camera een barcode pakt
-async function onScanSuccess(decodedText) {
-    // Stop als de code geen geldige ISBN lengte heeft
-    if(decodedText.length !== 13) return;
+// Verwerk het gescande ISBN-nummer
+async function onScanSuccess(isbnNummer) {
+    // Alleen 13-cijferige streepjescodes verwerken
+    if(isbnNummer.length !== 13) return;
     
-    // Tril Android telefoon kort als succes-feedback
     if (navigator.vibrate) navigator.vibrate(150);
 
     const resultCard = document.getElementById('result-card');
     resultCard.classList.remove('hidden');
     document.getElementById('res-title').innerText = "Live data ophalen...";
-    document.getElementById('res-isbn').innerText = decodedText;
+    document.getElementById('res-isbn').innerText = isbnNummer;
 
     try {
-        const response = await fetch(`/api/scan?ean=${decodedText}`);
+        const response = await fetch(`/api/scan?ean=${isbnNummer}`);
         const data = await response.json();
 
         if (data.error) {
@@ -66,11 +62,11 @@ async function onScanSuccess(decodedText) {
         momenteelGescandBoek = data;
 
     } catch (err) {
-        document.getElementById('res-title').innerText = "Netwerkfout met backend";
+        document.getElementById('res-title').innerText = "Fout bij laden backend data";
     }
 }
 
-// Knop om boek op te slaan in Supabase
+// Opslaan knop actie (Supabase)
 document.getElementById('btn-save').addEventListener('click', async () => {
     if (!momenteelGescandBoek) return;
 
@@ -82,7 +78,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
         });
 
         if(response.ok) {
-            alert("Succesvol opgeslagen!");
+            alert("Boek toegevoegd aan je voorraad!");
             document.getElementById('result-card').classList.add('hidden');
             momenteelGescandBoek = null;
             laadVoorraadUitDatabase();
@@ -92,7 +88,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     }
 });
 
-// Haal de lijst met gescande boeken op uit Supabase
+// Haal voorraad op uit Supabase
 async function laadVoorraadUitDatabase() {
     try {
         const response = await fetch('/api/scan?action=list');
