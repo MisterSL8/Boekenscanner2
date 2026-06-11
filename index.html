@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Boek Laser (Gratis)</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Importeer de barcodescanner bibliotheek -->
+    <script src="https://unpkg.com" type="text/javascript"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 AI Boek Laser</h1>
+            <div id="connection-status" class="status-badge connected">Verbonden met Cloud</div>
+        </header>
+
+        <!-- Scanner Sectie -->
+        <main>
+            <div class="scanner-card">
+                <div id="reader"></div>
+            </div>
+
+            <!-- Live Resultaten Scherm -->
+            <div id="result-card" class="result-card hidden">
+                <h2 id="res-title">Boek Laden...</h2>
+                <div class="isbn-badge" id="res-isbn">9789000000000</div>
+                
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="label">Bol.com Prijs</span>
+                        <span class="value" id="res-price">€ 0,00</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Netto Winst</span>
+                        <span class="value profit" id="res-profit">€ 0,00</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Snelheid</span>
+                        <span class="value rank-badge" id="res-rank">-</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Gegenereerde SKU</span>
+                        <span class="value sku" id="res-sku">-</span>
+                    </div>
+                </div>
+                
+                <button id="btn-save" class="btn-primary">💾 Sla op in Voorraad</button>
+            </div>
+        </main>
+
+        <!-- Historie / Gescande Voorraad -->
+        <section class="history-section">
+            <h3>📋 Gescande Voorraad (Supabase)</h3>
+            <ul id="inventory-list" class="inventory-list">
+                <!-- Data komt hier dynamisch via JS -->
+            </ul>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
