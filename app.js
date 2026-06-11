@@ -1,37 +1,28 @@
 let momenteelGescandBoek = null;
+let codeReader = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialiseer de Instascan scanner gekoppeld aan de HTML video-tag
-    let scanner = new Instascan.Scanner({ video: document.getElementById('preview'), scanPeriod: 5 });
-    
-    // Luister naar succesvolle scans
-    scanner.addListener('scan', function (content) {
-        onScanSuccess(content);
-    });
+    // 1. Initialiseer de barcode-lezer van ZXing
+    codeReader = new ZXing.BrowserBarcodeReader();
+    console.log('ZXing code reader geïnitialiseerd');
 
-    // 2. Vraag actief de camera's op bij het besturingssysteem (dit triggert de pop-up direct!)
-    Instascan.Camera.getCameras().then(function (cameras) {
-        if (cameras.length > 0) {
-            // Als er een achtercamera is (meestal camera 1 of de laatste op Android), kies die. Anders camera 0 (PC).
-            let gekozenCamera = cameras.length > 1 ? cameras[1] : cameras[0];
-            scanner.start(gekozenCamera);
-            document.getElementById('connection-status').innerText = "Camera Actief";
-        } else {
-            document.getElementById('connection-status').innerText = "Geen camera gedetecteerd";
-            alert("Er is geen camera op dit apparaat gevonden.");
-        }
-    }).catch(function (e) {
-        document.getElementById('connection-status').innerText = "Toestemming Geweigerd";
-        console.error(e);
-        alert("Cameratoestemming is geweigerd of geblokkeerd in je browser.");
-    });
-
+    // 2. Start de camera en begin direct met scannen (triggert de pop-up)
+    codeReader.decodeFromInputVideoDevice(undefined, 'video')
+        .then((result) => {
+            // Zodra er een barcode succesvol wordt gelezen
+            onScanSuccess(result.text);
+        })
+        .catch((err) => {
+            document.getElementById('connection-status').innerText = "Camera Fout";
+            console.error(err);
+        });
+        
+    document.getElementById('connection-status').innerText = "Camera Actief";
     laadVoorraadUitDatabase();
 });
 
 // Verwerk het gescande ISBN-nummer
 async function onScanSuccess(isbnNummer) {
-    // Alleen 13-cijferige streepjescodes verwerken
     if(isbnNummer.length !== 13) return;
     
     if (navigator.vibrate) navigator.vibrate(150);
