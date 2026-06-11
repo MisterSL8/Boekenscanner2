@@ -5,23 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Boek Laser (Gratis)</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Importeer de barcodescanner bibliotheek -->
-    <script src="https://unpkg.com" type="text/javascript"></script>
+    <!-- We gebruiken nu de stabiele Instascan bibliotheek via CDN -->
+    <script src="https://rawgit.com"></script>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>📚 AI Boek Laser</h1>
-            <div id="connection-status" class="status-badge connected">Verbonden met Cloud</div>
+            <div id="connection-status" class="status-badge connected">Scanner Stand-by</div>
         </header>
 
-        <!-- Scanner Sectie -->
         <main>
             <div class="scanner-card">
-                <div id="reader"></div>
+                <!-- Instascan heeft een puur HTML5 video-element nodig -->
+                <video id="preview" style="width: 100%; height: auto; background: #000; transform: scaleX(1);"></video>
             </div>
 
-            <!-- Live Resultaten Scherm -->
             <div id="result-card" class="result-card hidden">
                 <h2 id="res-title">Boek Laden...</h2>
                 <div class="isbn-badge" id="res-isbn">9789000000000</div>
@@ -49,12 +48,9 @@
             </div>
         </main>
 
-        <!-- Historie / Gescande Voorraad -->
         <section class="history-section">
             <h3>📋 Gescande Voorraad (Supabase)</h3>
-            <ul id="inventory-list" class="inventory-list">
-                <!-- Data komt hier dynamisch via JS -->
-            </ul>
+            <ul id="inventory-list" class="inventory-list"></ul>
         </section>
     </div>
 
