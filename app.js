@@ -1,31 +1,55 @@
 let momenteelGescandBoek = null;
+let isScannenBezig = false; // Voorkomt dat hij hetzelfde boek 100 keer achter elkaar scant
 
 window.addEventListener('DOMContentLoaded', () => {
-    const videoElement = document.getElementById('video');
     const statusElement = document.getElementById('connection-status');
 
-    // CONFIGURATIE: Vraag de browser direct om de camera te starten (Webcam of Android-achtercamera)
-    const constraints = {
-        video: { facingMode: { ideal: "environment" } } // Zoekt achtercamera op mobiel, pakt webcam op PC
-    };
-
-    navigator.mediaDevices.getUserMedia(constraints)
-        .then((stream) => {
-            // Succes! De camera geeft beeld door aan de video-tag
-            videoElement.srcObject = stream;
-            statusElement.innerText = "Camera Actief";
-            statusElement.style.borderColor = "#10b981";
-            statusElement.style.color = "#10b981";
-        })
-        .catch((err) => {
-            // Foutafhandeling als de camera fysiek ontbreekt of geblokkeerd is
-            statusElement.innerText = "Camera Geblokkeerd/Fout";
+    // 1. Configureer Quagga2 barcodescanner
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector('#interactive'), // De HTML-container
+            constraints: {
+                width: 640,
+                height: 480,
+                facingMode: "environment" // Gebruik de achtercamera op Android
+            },
+        },
+        decoder: {
+            readers: ["ean_reader"] // EAN_READER is specifiek voor boek-barcodes
+        }
+    }, function (err) {
+        if (err) {
+            statusElement.innerText = "Camera Fout";
             statusElement.style.borderColor = "#ef4444";
-            statusElement.style.color = "#ef4444";
-            console.error("Camerafout:", err);
-        });
+            console.error(err);
+            return;
+        }
+        // Succesvol opgestart!
+        Quagga.start();
+        statusElement.innerText = "Scanner Actief";
+        statusElement.style.borderColor = "#10b981";
+        statusElement.style.color = "#10b981";
+    });
 
-    // Handmatige zoekknop activeren (zodat je app altijd bruikbaar is)
+    // 2. Luister naar barcodes die herkend worden
+    Quagga.onDetected(function (data) {
+        const code = data.codeResult.code;
+        
+        // Boeken hebben ALTIJD een 13-cijferig ISBN dat begint met 978 of 979
+        if (code && code.length === 13 && (code.startsWith("978") || code.startsWith("979"))) {
+            if (!isScannenBezig) {
+                isScannenBezig = true; // Zet op pauze zodat hij rustig data kan laden
+                verwerkIsbn(code);
+                
+                // Start de scanner na 4 seconden pas weer voor het volgende boek
+                setTimeout(() => { isScannenBezig = false; }, 4000);
+            }
+        }
+    });
+
+    // Handmatige zoekknop activeren (als back-up)
     document.getElementById('btn-manual-search').addEventListener('click', () => {
         const handmatigIsbn = document.getElementById('manual-isbn').value.trim();
         if(handmatigIsbn.length === 13) {
