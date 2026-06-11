@@ -1,17 +1,40 @@
+// app.js - Verbeterde universele versie voor PC en Android
 let momenteelGescandBoek = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    // Initialiseer html5-qrcode barcodescanner voor Android camera
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-        "reader", { fps: 15, qrbox: { width: 280, height: 120 } }
-    );
-    html5QrcodeScanner.render(onScanSuccess);
+    // We starten de camera handmatig op via de stabiele route
+    Html5Qrcode.getCameras().then(cameras => {
+        if (cameras && cameras.length > 0) {
+            // Als er camera's zijn, starten we de scanner
+            const html5QrCode = new Html5Qrcode("reader");
+            
+            // Kies bij voorkeur de achtercamera (Android), anders de eerste beschikbare (PC)
+            const cameraId = cameras.length > 1 ? cameras[1].id : cameras[0].id;
+
+            html5QrCode.start(
+                cameraId, 
+                { fps: 15, qrbox: { width: 250, height: 150 } },
+                (decodedText) => { onScanSuccess(decodedText); }, // Succes handler
+                (errorMessage) => { /* Stille fouten negeren tijdens het zoeken */ }
+            ).catch(err => {
+                document.getElementById('connection-status').innerText = "Camera startfout";
+                console.error("Camera startfout:", err);
+            });
+        } else {
+            document.getElementById('connection-status').innerText = "Geen camera gevonden";
+        }
+    }).catch(err => {
+        // Hier vraagt de browser expliciet om toestemming zodra dit faalt
+        document.getElementById('connection-status').innerText = "Toegang geweigerd of geblokkeerd";
+        console.error("Camera permissie fout:", err);
+    });
+
     laadVoorraadUitDatabase();
 });
 
-// Functie die afgaat zodra je Android-camera een barcode pakt
+// Functie die afgaat zodra je camera een barcode pakt
 async function onScanSuccess(decodedText) {
-    // Alleen 13-cijferige ISBN codes accepteren
+    // Stop als de code geen geldige ISBN lengte heeft
     if(decodedText.length !== 13) return;
     
     // Tril Android telefoon kort als succes-feedback
@@ -23,36 +46,31 @@ async function onScanSuccess(decodedText) {
     document.getElementById('res-isbn').innerText = decodedText;
 
     try {
-        // Vraag live data op bij onze beveiligde Vercel serverless function
         const response = await fetch(`/api/scan?ean=${decodedText}`);
         const data = await response.json();
 
         if (data.error) {
-            document.getElementById('res-title').innerText = "Boek niet gevonden op Bol.com";
+            document.getElementById('res-title').innerText = "Niet gevonden op Bol.com";
             return;
         }
 
-        // Live data toekennen aan interface
-        document.getElementById('res-title').innerText = data.title || "Onbekende Titel";
+        document.getElementById('res-title').innerText = data.title || "Onbekend Boek";
         document.getElementById('res-price').innerText = `€ ${data.price.toFixed(2)}`;
         document.getElementById('res-profit').innerText = `€ ${data.profit.toFixed(2)}`;
         
-        // Sales rank indicator logica (Gelijk aan Boek Laser)
         const rankBadge = document.getElementById('res-rank');
         rankBadge.innerText = data.salesRankText;
         rankBadge.style.color = data.salesRankColor;
 
         document.getElementById('res-sku').innerText = data.sku;
-
-        // Onthoud dit boek in het geheugen voor als men op 'Opslaan' klikt
         momenteelGescandBoek = data;
 
     } catch (err) {
-        document.getElementById('res-title').innerText = "Netwerkfout met backend server";
+        document.getElementById('res-title').innerText = "Netwerkfout met backend";
     }
 }
 
-// Knop om boek daadwerkelijk naar je gratis database (Supabase) te schrijven
+// Knop om boek op te slaan in Supabase
 document.getElementById('btn-save').addEventListener('click', async () => {
     if (!momenteelGescandBoek) return;
 
@@ -64,7 +82,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
         });
 
         if(response.ok) {
-            alert("Succesvol opgeslagen in je database!");
+            alert("Succesvol opgeslagen!");
             document.getElementById('result-card').classList.add('hidden');
             momenteelGescandBoek = null;
             laadVoorraadUitDatabase();
@@ -74,7 +92,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     }
 });
 
-// Haal de lijst met gescande boeken op om onderaan het scherm te tonen
+// Haal de lijst met gescande boeken op uit Supabase
 async function laadVoorraadUitDatabase() {
     try {
         const response = await fetch('/api/scan?action=list');
