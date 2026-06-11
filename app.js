@@ -1,62 +1,38 @@
 let momenteelGescandBoek = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    const videoElement = document.getElementById('video');
-    const statusElement = document.getElementById('connection-status');
-
-    // CONFIGURATIE: Vraag de browser direct om de camera te starten (Webcam of Android-achtercamera)
-    const constraints = {
-        video: { facingMode: { ideal: "environment" } } // Zoekt achtercamera op mobiel, pakt webcam op PC
-    };
-
-    navigator.mediaDevices.getUserMedia(constraints)
-        .then((stream) => {
-            // Succes! De camera geeft beeld door aan de video-tag
-            videoElement.srcObject = stream;
-            statusElement.innerText = "Camera Actief";
-            statusElement.style.borderColor = "#10b981";
-            statusElement.style.color = "#10b981";
-        })
-        .catch((err) => {
-            // Foutafhandeling als de camera fysiek ontbreekt of geblokkeerd is
-            statusElement.innerText = "Camera Geblokkeerd/Fout";
-            statusElement.style.borderColor = "#ef4444";
-            statusElement.style.color = "#ef4444";
-            console.error("Camerafout:", err);
-        });
-
-    // Handmatige zoekknop activeren (zodat je app altijd bruikbaar is)
+    // Luister naar de handmatige zoekknop
     document.getElementById('btn-manual-search').addEventListener('click', () => {
         const handmatigIsbn = document.getElementById('manual-isbn').value.trim();
-        if(handmatigIsbn.length === 13) {
+        if(handmatigIsbn.length === 13 && (handmatigIsbn.startsWith("978") || handmatigIsbn.startsWith("979"))) {
             verwerkIsbn(handmatigIsbn);
         } else {
-            alert("Voer een geldig 13-cijferig ISBN in.");
+            alert("Voer een geldig 13-cijferig ISBN in (begint met 978 of 979).");
         }
     });
 
     laadVoorraadUitDatabase();
 });
 
-// Stuur het ISBN-nummer door naar de Vercel-backend
+// Verwerk het ISBN-nummer
 async function verwerkIsbn(isbnNummer) {
-    if (navigator.vibrate) navigator.vibrate(150);
-
     const resultCard = document.getElementById('result-card');
     resultCard.classList.remove('hidden');
-    document.getElementById('res-title').innerText = "Live data ophalen uit Bol...";
+    document.getElementById('res-title').innerText = "Berekening uitvoeren...";
     document.getElementById('res-isbn').innerText = isbnNummer;
 
     try {
         const response = await fetch(`/api/scan?ean=${isbnNummer}`);
         const data = await response.json();
 
-        if (data.error) {
-            document.getElementById('res-title').innerText = "Niet gevonden op Bol.com";
-            return;
-        }
-
-        document.getElementById('res-title').innerText = data.title || "Onbekend Boek";
+        // Toon de lokale berekening op het scherm
+        document.getElementById('res-title').innerHTML = `
+            ${data.title} <br>
+            <a href="${data.bolUrl}" target="_blank" style="display:inline-block; margin-top:8px; padding:6px 12px; background:#f59e0b; color:black; text-decoration:none; border-radius:4px; font-weight:bold; font-size:0.85rem;">
+                🔍 Verifieer Live Prijs op Bol.com ↗
+            </a>
+        `;
+        
         document.getElementById('res-price').innerText = `€ ${data.price.toFixed(2)}`;
         document.getElementById('res-profit').innerText = `€ ${data.profit.toFixed(2)}`;
         
@@ -68,11 +44,11 @@ async function verwerkIsbn(isbnNummer) {
         momenteelGescandBoek = data;
 
     } catch (err) {
-        document.getElementById('res-title').innerText = "Fout bij laden backend data";
+        document.getElementById('res-title').innerText = "Fout bij laden data";
     }
 }
 
-// Opslaan knop actie (Supabase)
+// Schrijf het boek weg naar Supabase
 document.getElementById('btn-save').addEventListener('click', async () => {
     if (!momenteelGescandBoek) return;
 
@@ -84,7 +60,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
         });
 
         if(response.ok) {
-            alert("Boek toegevoegd aan je voorraad!");
+            alert("Boek succesvol bewaard in je voorraad!");
             document.getElementById('result-card').classList.add('hidden');
             document.getElementById('manual-isbn').value = '';
             momenteelGescandBoek = null;
@@ -95,12 +71,13 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     }
 });
 
-// Haal voorraad op uit Supabase
+// Laad de live geschiedenis in onderaan het scherm
 async function laadVoorraadUitDatabase() {
     try {
         const response = await fetch('/api/scan?action=list');
         const items = await response.json();
         const list = document.getElementById('inventory-list');
+        if (!list) return;
         list.innerHTML = '';
 
         items.forEach(item => {
