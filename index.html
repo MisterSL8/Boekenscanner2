@@ -5,21 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Boek Laser</title>
     <link rel="stylesheet" href="style.css">
+    <!-- De officiële stabiele Quagga2 barcodescanner bibliotheek -->
+    <script src="https://jsdelivr.net"></script>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>📚 AI Boek Laser</h1>
-            <div id="connection-status" class="status-badge connected">Camera Stand-by</div>
+            <div id="connection-status" class="status-badge">Camera Stand-by</div>
         </header>
 
         <main>
+            <!-- Quagga2 heeft een container nodig waar hij zelf de video inzet -->
             <div class="scanner-card">
-                <!-- Puur HTML5 video-element -->
-                <video id="video" style="width: 100%; height: auto; background: #000;" autoplay playsinline></video>
+                <div id="interactive" class="viewport" style="width: 100%; position: relative;">
+                    <!-- Quagga plaatst hier dynamisch de video-tag in -->
+                </div>
             </div>
 
-            <!-- Handmatig invoerveld als back-up als de camera op PC/telefoon weigert -->
+            <!-- Handmatig invoerveld als back-up -->
             <div class="manual-input-box" style="margin-bottom: 20px;">
                 <input type="text" id="manual-isbn" placeholder="Of typ ISBN handmatig..." style="width: 70%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: white;">
                 <button id="btn-manual-search" style="padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; width: 25%;">Zoek</button>
