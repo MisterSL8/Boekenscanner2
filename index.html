@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Boek Laser (Gratis)</title>
+    <title>AI Boek Laser</title>
     <link rel="stylesheet" href="style.css">
-    <!-- We gebruiken nu de stabiele Instascan bibliotheek via CDN -->
-    <script src="https://rawgit.com"></script>
+    <!-- De officiële en stabiele ZXing barcodescanner bibliotheek -->
+    <script src="https://unpkg.com"></script>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>📚 AI Boek Laser</h1>
-            <div id="connection-status" class="status-badge connected">Scanner Stand-by</div>
+            <div id="connection-status" class="status-badge connected">Scanner Starten...</div>
         </header>
 
         <main>
             <div class="scanner-card">
-                <!-- Instascan heeft een puur HTML5 video-element nodig -->
-                <video id="preview" style="width: 100%; height: auto; background: #000; transform: scaleX(1);"></video>
+                <!-- Het verplichte HTML5 video-element met autoplay en playsinline voor Android -->
+                <video id="video" style="width: 100%; height: auto; background: #000;" autoplay playsinline></video>
             </div>
 
             <div id="result-card" class="result-card hidden">
