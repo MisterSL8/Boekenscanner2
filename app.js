@@ -1,35 +1,50 @@
 let momenteelGescandBoek = null;
-let codeReader = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialiseer de barcode-lezer van ZXing
-    codeReader = new ZXing.BrowserBarcodeReader();
-    console.log('ZXing code reader geïnitialiseerd');
+    const videoElement = document.getElementById('video');
+    const statusElement = document.getElementById('connection-status');
 
-    // 2. Start de camera en begin direct met scannen (triggert de pop-up)
-    codeReader.decodeFromInputVideoDevice(undefined, 'video')
-        .then((result) => {
-            // Zodra er een barcode succesvol wordt gelezen
-            onScanSuccess(result.text);
+    // CONFIGURATIE: Vraag de browser direct om de camera te starten (Webcam of Android-achtercamera)
+    const constraints = {
+        video: { facingMode: { ideal: "environment" } } // Zoekt achtercamera op mobiel, pakt webcam op PC
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then((stream) => {
+            // Succes! De camera geeft beeld door aan de video-tag
+            videoElement.srcObject = stream;
+            statusElement.innerText = "Camera Actief";
+            statusElement.style.borderColor = "#10b981";
+            statusElement.style.color = "#10b981";
         })
         .catch((err) => {
-            document.getElementById('connection-status').innerText = "Camera Fout";
-            console.error(err);
+            // Foutafhandeling als de camera fysiek ontbreekt of geblokkeerd is
+            statusElement.innerText = "Camera Geblokkeerd/Fout";
+            statusElement.style.borderColor = "#ef4444";
+            statusElement.style.color = "#ef4444";
+            console.error("Camerafout:", err);
         });
-        
-    document.getElementById('connection-status').innerText = "Camera Actief";
+
+    // Handmatige zoekknop activeren (zodat je app altijd bruikbaar is)
+    document.getElementById('btn-manual-search').addEventListener('click', () => {
+        const handmatigIsbn = document.getElementById('manual-isbn').value.trim();
+        if(handmatigIsbn.length === 13) {
+            verwerkIsbn(handmatigIsbn);
+        } else {
+            alert("Voer een geldig 13-cijferig ISBN in.");
+        }
+    });
+
     laadVoorraadUitDatabase();
 });
 
-// Verwerk het gescande ISBN-nummer
-async function onScanSuccess(isbnNummer) {
-    if(isbnNummer.length !== 13) return;
-    
+// Stuur het ISBN-nummer door naar de Vercel-backend
+async function verwerkIsbn(isbnNummer) {
     if (navigator.vibrate) navigator.vibrate(150);
 
     const resultCard = document.getElementById('result-card');
     resultCard.classList.remove('hidden');
-    document.getElementById('res-title').innerText = "Live data ophalen...";
+    document.getElementById('res-title').innerText = "Live data ophalen uit Bol...";
     document.getElementById('res-isbn').innerText = isbnNummer;
 
     try {
@@ -71,6 +86,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
         if(response.ok) {
             alert("Boek toegevoegd aan je voorraad!");
             document.getElementById('result-card').classList.add('hidden');
+            document.getElementById('manual-isbn').value = '';
             momenteelGescandBoek = null;
             laadVoorraadUitDatabase();
         }
